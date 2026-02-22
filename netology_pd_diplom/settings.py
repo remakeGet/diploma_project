@@ -29,6 +29,7 @@ ALLOWED_HOSTS = ['*']
 # Application definition
 
 INSTALLED_APPS = [
+    'baton',
     'django.contrib.admin',
     'django.contrib.auth',
     'django.contrib.contenttypes',
@@ -44,7 +45,65 @@ INSTALLED_APPS = [
     # Social Auth
     'social_django',  
     'backend',
+    'baton.autodiscover',
 ]
+
+BATON = {
+    'SITE_HEADER': 'Netology Diplom Admin',
+    'SITE_TITLE': 'Netology Admin',
+    'INDEX_TITLE': 'Управление проектом',
+    'SUPPORT_HREF': 'https://github.com/ваш-репозиторий/issues',
+    'COPYRIGHT': 'copyright © 2025 <a href="https://ваш-сайт.ru">Ваша компания</a>',
+    'POWERED_BY': '<a href="https://ваш-сайт.ru">Ваша компания</a>',
+    'CONFIRM_UNSAVED_CHANGES': True,
+    'SHOW_MULTIPART_UPLOADING': True,
+    'ENABLE_IMAGES_PREVIEW': True,
+    'CHANGELIST_FILTERS_IN_MODAL': True,
+    'CHANGEFORM_FIXED_SUBMIT_ROW': True,
+    'MENU_TITLE': 'Меню',
+    'GRAVATAR_ENABLED': True,
+    'FORCE_THEME': 'light',  # или 'dark'
+    
+    # Настройка меню админки
+    'MENU': (
+        {'type': 'title', 'label': 'Основные разделы', 'apps': ('backend',), 'icon': 'apps'},
+        {
+            'type': 'app',
+            'name': 'backend',
+            'label': 'Магазин',
+            'icon': 'store',
+            'models': (
+                {'name': 'user', 'label': 'Пользователи', 'icon': 'people'},
+                {'name': 'shop', 'label': 'Магазины', 'icon': 'storefront'},
+                {'name': 'category', 'label': 'Категории', 'icon': 'category'},
+                {'name': 'product', 'label': 'Товары', 'icon': 'inventory'},
+                {'name': 'order', 'label': 'Заказы', 'icon': 'shopping_cart'},
+                {'name': 'contact', 'label': 'Контакты', 'icon': 'contacts'},
+            )
+        },
+        {'type': 'title', 'label': 'Аутентификация', 'apps': ('auth',), 'icon': 'security'},
+        {
+            'type': 'app',
+            'name': 'auth',
+            'label': 'Аутентификация',
+            'icon': 'lock',
+            'models': (
+                {'name': 'user', 'label': 'Пользователи Django', 'icon': 'people'},
+                {'name': 'group', 'label': 'Группы', 'icon': 'groups'},
+            )
+        },
+        {
+            'type': 'free',
+            'label': 'Внешние ссылки',
+            'icon': 'link',
+            'children': [
+                {'type': 'free', 'label': 'Swagger UI', 'url': '/api/schema/swagger-ui/', 'icon': 'api'},
+                {'type': 'free', 'label': 'ReDoc', 'url': '/api/schema/redoc/', 'icon': 'description'},
+                {'type': 'free', 'label': 'GitHub', 'url': 'https://github.com', 'icon': 'code'},
+            ]
+        },
+    )
+}
 
 MIDDLEWARE = [
     'django.middleware.security.SecurityMiddleware',
