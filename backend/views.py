@@ -1,4 +1,8 @@
 from django.conf import settings
+import time
+from django.db import connection
+from .models import ProductInfo, Shop, Category
+
 from distutils.util import strtobool
 from rest_framework.request import Request
 from django.contrib.auth import authenticate
@@ -296,6 +300,11 @@ class ProductInfoView(APIView):
                Returns:
                - Response: The response containing the product information.
                """
+        # Очищаем список запросов к БД для чистоты эксперимента
+        connection.queries_log.clear()
+        
+        # Засекаем время начала
+        start_time = time.time()
         query = Q(shop__state=True)
         shop_id = request.query_params.get('shop_id')
         category_id = request.query_params.get('category_id')
@@ -313,7 +322,24 @@ class ProductInfoView(APIView):
             'product_parameters__parameter').distinct()
 
         serializer = ProductInfoSerializer(queryset, many=True)
-
+# Засекаем время конца
+        end_time = time.time()
+        duration = (end_time - start_time) * 1000  # в миллисекундах
+        
+        # Считаем количество запросов к БД
+        num_queries = len(connection.queries)
+        
+        # Выводим результаты в консоль Django
+        print(f"\n{'='*50}")
+        print(f"📊 ProductInfoView Performance:")
+        print(f"⏱️  Время выполнения: {duration:.2f} ms")
+        print(f"🗄️  Запросов к БД: {num_queries}")
+        print(f"{'='*50}\n")
+        
+        # Можно добавить информацию в заголовки ответа
+        response = Response(serializer.data)
+        response['X-Query-Count'] = num_queries
+        response['X-Response-Time'] = f"{duration:.2f}ms"
         return Response(serializer.data)
 
 
@@ -897,4 +923,52 @@ class SimpleHawkTestView(APIView):
             'hawk_configured': True,
             'hawk_object': str(settings.hawk),
             'results': results
+        })
+class CacheTestView(APIView):
+    """View для демонстрации работы кэширования"""
+    
+    authentication_classes = []
+    permission_classes = []
+    
+    def get(self, request):
+        results = []
+        
+        # Тест 1: Первый запрос
+        connection.queries_log.clear()
+        start = time.time()
+        
+        categories = list(Category.objects.all())
+        shops = list(Shop.objects.filter(state=True))
+        products = list(Product.objects.all()[:5])
+        
+        duration1 = (time.time() - start) * 1000
+        queries1 = len(connection.queries)
+        
+        results.append({
+            'test': 'Первый запрос',
+            'time_ms': round(duration1, 2),
+            'queries': queries1
+        })
+        
+        # Тест 2: Второй запрос (должен быть из кэша)
+        connection.queries_log.clear()
+        start = time.time()
+        
+        categories2 = list(Category.objects.all())
+        shops2 = list(Shop.objects.filter(state=True))
+        products2 = list(Product.objects.all()[:5])
+        
+        duration2 = (time.time() - start) * 1000
+        queries2 = len(connection.queries)
+        
+        results.append({
+            'test': 'Второй запрос (с кэшем)',
+            'time_ms': round(duration2, 2),
+            'queries': queries2
+        })
+        
+        return Response({
+            'status': 'ok',
+            'results': results,
+            'cache_type': 'Django LocMemCache'
         })

@@ -57,6 +57,7 @@ INSTALLED_APPS = [
     'rest_framework.authtoken',
     'django_rest_passwordreset',
     'imagekit',
+    'cacheops',
     'drf_spectacular',  
     'drf_spectacular_sidecar',
     # Social Auth
@@ -121,6 +122,41 @@ BATON = {
         },
     )
 }
+
+# ========== НАСТРОЙКИ КЭШИРОВАНИЯ ==========
+# Используем in-memory cache вместо Redis
+CACHES = {
+    'default': {
+        'BACKEND': 'django.core.cache.backends.locmem.LocMemCache',
+        'LOCATION': 'unique-snowflake',
+        'TIMEOUT': 60 * 60,  # 1 час
+    }
+}
+
+# Настройки cacheops - используем Django cache backend
+CACHEOPS_CACHE = 'default'  # Используем стандартный кэш Django
+CACHEOPS_DEFAULTS = {
+    'timeout': 60 * 60  # 1 час по умолчанию
+}
+
+# Стратегия кэширования для разных моделей
+CACHEOPS = {
+    # Кэшировать все get запросы для моделей пользователей
+    'auth.user': {'ops': 'get', 'timeout': 60*15},
+    
+    # Кэшировать все запросы для моделей магазина
+    'backend.category': {'ops': 'all', 'timeout': 60*60},
+    'backend.shop': {'ops': 'all', 'timeout': 60*60},
+    'backend.product': {'ops': 'all', 'timeout': 60*60},
+    'backend.productinfo': {'ops': ('fetch', 'get'), 'timeout': 60*60},
+    
+    # Для всех остальных моделей разрешаем ручное кэширование
+    '*.*': {'timeout': 60*60},
+}
+
+# Не останавливать приложение при ошибках кэширования
+CACHEOPS_DEGRADE_ON_FAILURE = True
+# ========== КОНЕЦ НАСТРОЕК КЭШИРОВАНИЯ ==========
 
 MEDIA_URL = '/media/'
 MEDIA_ROOT = os.path.join(BASE_DIR, 'media')

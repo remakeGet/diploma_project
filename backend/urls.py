@@ -3,7 +3,7 @@ from django_rest_passwordreset.views import reset_password_request_token, reset_
 
 from backend.views import PartnerUpdate, RegisterAccount, LoginAccount, CategoryView, ShopView, ProductInfoView, \
     BasketView, \
-    AccountDetails, ContactView, OrderView, PartnerState, PartnerOrders, ConfirmAccount, SocialLoginSuccess, SocialLoginError, SocialLoginPage, HawkDebugView,SimpleHawkTestView  
+    AccountDetails, ContactView, OrderView, PartnerState, PartnerOrders, ConfirmAccount, SocialLoginSuccess, SocialLoginError, SocialLoginPage, HawkDebugView,SimpleHawkTestView, CacheTestView  
 
 from django.conf import settings  # Добавьте эту строку
 from django.conf.urls.static import static  # Добавьте эту строку
@@ -31,5 +31,6 @@ urlpatterns = [
     path('order', OrderView.as_view(), name='order'),
     path('hawk-debug/', HawkDebugView.as_view(), name='hawk-debug'),
     path('simple-hawk-test/', SimpleHawkTestView.as_view(), name='simple-hawk-test'),
+    path('cache-test/', CacheTestView.as_view(), name='cache-test'),
 
 ]
