@@ -38,6 +38,8 @@ INSTALLED_APPS = [
     'rest_framework',
     'rest_framework.authtoken',
     'django_rest_passwordreset',
+    'drf_spectacular',  
+    'drf_spectacular_sidecar',
     'backend',
 ]
 
@@ -148,7 +150,23 @@ REST_FRAMEWORK = {
 
         'rest_framework.authentication.TokenAuthentication',
     ),
+    'DEFAULT_SCHEMA_CLASS': 'drf_spectacular.openapi.AutoSchema',
 
+}
+
+# Настройки Spectacular
+SPECTACULAR_SETTINGS = {
+    'TITLE': 'Netology Diplom API',
+    'DESCRIPTION': 'API для дипломного проекта интернет-магазина',
+    'VERSION': '1.0.0',
+    'SERVE_INCLUDE_SCHEMA': False,
+    'SWAGGER_UI_SETTINGS': {
+        'deepLinking': True,
+        'persistAuthorization': True,
+        'displayOperationId': True,
+    },
+    'COMPONENT_SPLIT_REQUEST': True,
+    'SCHEMA_PATH_PREFIX': '/api/v1',
 }
 
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'

@@ -24,8 +24,23 @@ from backend.signals import new_user_registered, new_order
 
 class RegisterAccount(APIView):
     """
-    Для регистрации покупателей
-    """
+    Регистрация нового покупателя.
+    
+    Создает нового пользователя с ролью покупателя.
+    После регистрации требуется подтверждение email через токен.
+    
+    POST параметры:
+    - first_name: Имя (обязательно)
+    - last_name: Фамилия (обязательно)
+    - email: Email (обязательно, уникальный)
+    - password: Пароль (обязательно)
+    - company: Компания (обязательно)
+    - position: Должность (обязательно)
+    
+    Returns:
+    - Status: True при успешной регистрации
+    - Errors: Описание ошибок при неудаче
+    """    
 
     # Регистрация методом POST
 
@@ -257,6 +272,16 @@ class ProductInfoView(APIView):
 
 class BasketView(APIView):
     """
+    Управление корзиной покупок пользователя.
+    
+    GET: Получить содержимое корзины
+    POST: Добавить товары в корзину
+    PUT: Обновить количество товаров в корзине
+    DELETE: Удалить товары из корзины
+    
+    Требуется аутентификация.
+    """
+    """
     A class for managing the user's shopping basket.
 
     Methods:
@@ -271,15 +296,15 @@ class BasketView(APIView):
 
     # получить корзину
     def get(self, request, *args, **kwargs):
+        """"
+        Получить содержимое корзины.
+        
+        Возвращает список товаров в корзине пользователя с общей суммой.
+        
+        Returns:
+        - 200: Список позиций в корзине
+        - 403: Если пользователь не аутентифицирован
         """
-                Retrieve the items in the user's basket.
-
-                Args:
-                - request (Request): The Django request object.
-
-                Returns:
-                - Response: The response containing the items in the user's basket.
-                """
         if not request.user.is_authenticated:
             return JsonResponse({'Status': False, 'Error': 'Log in required'}, status=403)
         basket = Order.objects.filter(
@@ -365,6 +390,18 @@ class BasketView(APIView):
     # добавить позиции в корзину
     def put(self, request, *args, **kwargs):
         """
+        Обновить количество товаров в корзине.
+        
+        Ожидает JSON с items, содержащими id позиции и новое количество:
+        {
+            "items": "[{\"id\": 1, \"quantity\": 5}]"
+        }
+        
+        Returns:
+        - Status: True при успешном обновлении
+        - Обновлено объектов: Количество обновленных позиций
+        - Errors: Описание ошибок при неудаче
+        English version:
         Update the quantity of items in the user's basket.
         
         Args:
