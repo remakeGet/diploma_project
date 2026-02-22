@@ -15,8 +15,25 @@ import os
 # Build paths inside the project like this: os.path.join(BASE_DIR, ...)
 BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 
-# Quick-start development settings - unsuitable for production
-# See https://docs.djangoproject.com/en/2.2/howto/deployment/checklist/
+# Hawk Configuration
+# Получите токен в личном кабинете Hawk (не DSN, а именно токен!)
+HAWK_TOKEN = os.environ.get('HAWK_TOKEN', 'ваш_токен')
+
+if HAWK_TOKEN:
+    # Импортируем функцию инициализации
+    from backend.hawk_setup import init_hawk, hawk_before_send
+    
+    # Инициализируем Hawk и сохраняем в глобальную переменную
+    hawk = init_hawk(
+        token=HAWK_TOKEN,
+        collector_endpoint='https://k1.hawk.so',
+        release=os.environ.get('HAWK_RELEASE', '1.0.0'),
+        before_send=hawk_before_send,
+    )
+    print(f"✓ Hawk initialized with token: {HAWK_TOKEN[:10]}...")
+else:
+    print("✗ Hawk token not set - monitoring disabled")
+    hawk = None
 
 # SECURITY WARNING: keep the secret key used in production secret!
 SECRET_KEY = '=hs6$#5om031nujz4staql9mbuste=!dc^6)4opsjq!vvjxzj@'
@@ -27,7 +44,6 @@ DEBUG = True
 ALLOWED_HOSTS = ['*']
 
 # Application definition
-
 INSTALLED_APPS = [
     'baton',
     'django.contrib.admin',
@@ -40,7 +56,6 @@ INSTALLED_APPS = [
     'rest_framework',
     'rest_framework.authtoken',
     'django_rest_passwordreset',
-    # 'versatileimagefield',
     'imagekit',
     'drf_spectacular',  
     'drf_spectacular_sidecar',
@@ -117,6 +132,7 @@ MIDDLEWARE = [
     'django.middleware.csrf.CsrfViewMiddleware',
     'django.contrib.auth.middleware.AuthenticationMiddleware',
     # Social Auth middleware 
+    'backend.middleware.HawkMiddleware',
     'social_django.middleware.SocialAuthExceptionMiddleware',
     'django.contrib.messages.middleware.MessageMiddleware',
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
@@ -124,6 +140,7 @@ MIDDLEWARE = [
 
 # Site ID для django.contrib.sites
 SITE_ID = 1
+
 # Аутентификация
 AUTHENTICATION_BACKENDS = [
     'social_core.backends.google.GoogleOAuth2',
@@ -134,32 +151,23 @@ AUTHENTICATION_BACKENDS = [
 # Настройки Social Auth
 SOCIAL_AUTH_URL_NAMESPACE = 'social'
 
-# Ключи приложений (получить в консоли разработчика)
+# Ключи приложений
 SOCIAL_AUTH_GOOGLE_OAUTH2_KEY = os.environ.get('GOOGLE_OAUTH2_KEY', '')
 SOCIAL_AUTH_GOOGLE_OAUTH2_SECRET = os.environ.get('GOOGLE_OAUTH2_SECRET', '')
-
 SOCIAL_AUTH_GITHUB_KEY = os.environ.get('GITHUB_KEY', '')
 SOCIAL_AUTH_GITHUB_SECRET = os.environ.get('GITHUB_SECRET', '')
 
-# Дополнительные настройки
+# Дополнительные настройки Social Auth
 SOCIAL_AUTH_LOGIN_REDIRECT_URL = '/api/v1/social/login/success/'
 SOCIAL_AUTH_LOGIN_ERROR_URL = '/api/v1/social/login/error/'
 SOCIAL_AUTH_NEW_USER_REDIRECT_URL = '/api/v1/social/login/success/'
 SOCIAL_AUTH_NEW_ASSOCIATION_REDIRECT_URL = '/api/v1/social/login/success/'
-
-# Разрешаем создавать пользователей через соцсети
 SOCIAL_AUTH_CREATE_USERS = True
-
-# Поля для заполнения при создании пользователя
 SOCIAL_AUTH_USER_FIELDS = ['email', 'first_name', 'last_name', 'username']
-
-# Настройки для Google
 SOCIAL_AUTH_GOOGLE_OAUTH2_SCOPE = [
     'https://www.googleapis.com/auth/userinfo.email',
     'https://www.googleapis.com/auth/userinfo.profile',
 ]
-
-# Настройки для GitHub
 SOCIAL_AUTH_GITHUB_SCOPE = ['user:email']
 
 ROOT_URLCONF = 'netology_pd_diplom.urls'
@@ -167,8 +175,7 @@ ROOT_URLCONF = 'netology_pd_diplom.urls'
 TEMPLATES = [
     {
         'BACKEND': 'django.template.backends.django.DjangoTemplates',
-        'DIRS': [os.path.join(BASE_DIR, 'templates')]
-        ,
+        'DIRS': [os.path.join(BASE_DIR, 'templates')],
         'APP_DIRS': True,
         'OPTIONS': {
             'context_processors': [
@@ -184,21 +191,14 @@ TEMPLATES = [
 WSGI_APPLICATION = 'netology_pd_diplom.wsgi.application'
 
 # Database
-# https://docs.djangoproject.com/en/2.2/ref/settings/#databases
-
 DATABASES = {
-
     'default': {
         'ENGINE': 'django.db.backends.sqlite3',
         'NAME': os.path.join(BASE_DIR, 'db.sqlite3'),
     }
-
-
 }
 
 # Password validation
-# https://docs.djangoproject.com/en/2.2/ref/settings/#auth-password-validators
-
 AUTH_PASSWORD_VALIDATORS = [
     {
         'NAME': 'django.contrib.auth.password_validation.UserAttributeSimilarityValidator',
@@ -215,71 +215,51 @@ AUTH_PASSWORD_VALIDATORS = [
 ]
 
 # Internationalization
-# https://docs.djangoproject.com/en/2.2/topics/i18n/
-
 LANGUAGE_CODE = 'en-us'
-
 TIME_ZONE = 'UTC'
-
 USE_I18N = True
-
 USE_L10N = True
-
 USE_TZ = True
 
-# Static files (CSS, JavaScript, Images)
-# https://docs.djangoproject.com/en/2.2/howto/static-files/
-
+# Static files
 STATIC_URL = '/static/'
 STATIC_ROOT = os.path.join(BASE_DIR, 'static')
 
 AUTH_USER_MODEL = 'backend.User'
 
+# Email settings
 EMAIL_BACKEND = 'django.core.mail.backends.smtp.EmailBackend'
-# EMAIL_USE_TLS = True
-
 EMAIL_HOST = 'smtp.mail.ru'
-
 EMAIL_HOST_USER = 'netology.diplom@mail.ru'
 EMAIL_HOST_PASSWORD = 'CLdm7yW4U9nivz9mbexu'
 EMAIL_PORT = '465'
 EMAIL_USE_SSL = True
 SERVER_EMAIL = EMAIL_HOST_USER
 
+# REST Framework settings
 REST_FRAMEWORK = {
     'DEFAULT_PAGINATION_CLASS': 'rest_framework.pagination.PageNumberPagination',
     'PAGE_SIZE': 40,
-
     'DEFAULT_RENDERER_CLASSES': (
         'rest_framework.renderers.JSONRenderer',
         'rest_framework.renderers.BrowsableAPIRenderer',
-
     ),
-
     'DEFAULT_AUTHENTICATION_CLASSES': (
-
-        'rest_framework.authentication.TokenAuthentication',
         'rest_framework.authentication.TokenAuthentication',
         'rest_framework.authentication.SessionAuthentication',
     ),
-# Добавляем тротлинг
-    # 'DEFAULT_THROTTLE_CLASSES': [
-    #     'rest_framework.throttling.AnonRateThrottle',
-    #     'rest_framework.throttling.UserRateThrottle',
-    # ],
     'DEFAULT_THROTTLE_RATES': {
-        'anon': '100/day',     # 100 запросов в день для анонимных
-        'user': '1000/day',    # 1000 запросов в день для авторизованных
-        'register': '5/hour',  # 5 попыток регистрации в час
-        'login': '10/minute',  # 10 попыток входа в минуту
-        'import': '10/day',    # 10 импортов в день для магазинов
+        'anon': '100/day',
+        'user': '1000/day',
+        'register': '5/hour',
+        'login': '10/minute',
+        'import': '10/day',
     },
-
     'DEFAULT_SCHEMA_CLASS': 'drf_spectacular.openapi.AutoSchema',
-
+    'EXCEPTION_HANDLER': 'backend.exceptions.hawk_exception_handler',
 }
 
-# Настройки Spectacular
+# Spectacular settings
 SPECTACULAR_SETTINGS = {
     'TITLE': 'Netology Diplom API',
     'DESCRIPTION': 'API для дипломного проекта интернет-магазина',
@@ -296,7 +276,7 @@ SPECTACULAR_SETTINGS = {
 
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 
-# Celery Configuration Options
+# Celery Configuration
 CELERY_BROKER_URL = 'redis://localhost:6379/0'
 CELERY_RESULT_BACKEND = 'redis://localhost:6379/0'
 CELERY_ACCEPT_CONTENT = ['application/json']
@@ -304,13 +284,9 @@ CELERY_TASK_SERIALIZER = 'json'
 CELERY_RESULT_SERIALIZER = 'json'
 CELERY_TIMEZONE = TIME_ZONE
 CELERY_TASK_TRACK_STARTED = True
-CELERY_TASK_TIME_LIMIT = 30 * 60  # 30 минут
-CELERY_RESULT_EXPIRES = 3600  # 1 час
-
-# Для мониторинга задач в админке Django
+CELERY_TASK_TIME_LIMIT = 30 * 60
+CELERY_RESULT_EXPIRES = 3600
 CELERY_BEAT_SCHEDULER = 'django_celery_beat.schedulers:DatabaseScheduler'
-
-# Очереди для разных типов задач
 CELERY_TASK_ROUTES = {
     'backend.tasks.send_email_task': {'queue': 'email'},
     'backend.tasks.import_products_task': {'queue': 'import'},

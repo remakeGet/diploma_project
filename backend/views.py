@@ -1,3 +1,4 @@
+from django.conf import settings
 from distutils.util import strtobool
 from rest_framework.request import Request
 from django.contrib.auth import authenticate
@@ -795,32 +796,105 @@ class OrderView(APIView):
         return Response(serializer.data)
 
     # разместить заказ из корзины
-    def post(self, request, *args, **kwargs):
-        """
-               Put an order and send a notification.
+def post(self, request, *args, **kwargs):
+    """Разместить заказ из корзины"""
+    if not request.user.is_authenticated:
+        return JsonResponse({'Status': False, 'Error': 'Log in required'}, status=403)
 
-               Args:
-               - request (Request): The Django request object.
+    if {'id', 'contact'}.issubset(request.data):
+        if request.data['id'].isdigit():
+            try:
+                is_updated = Order.objects.filter(
+                    user_id=request.user.id, id=request.data['id']
+                ).update(
+                    contact_id=request.data['contact'],
+                    state='new'
+                )
+            except IntegrityError as error:
+                # Ручная отправка ошибки в Hawk с дополнительным контекстом
+                hawk.capture_exception(error)
+                hawk.set_context("order_creation", {
+                    "user_id": request.user.id,
+                    "order_id": request.data.get('id'),
+                    "contact_id": request.data.get('contact')
+                })
+                print(error)
+                return JsonResponse({'Status': False, 'Errors': 'Неправильно указаны аргументы'})
+            else:
+                if is_updated:
+                    # Добавляем breadcrumb для успешных операций (опционально)
+                    hawk.add_breadcrumb(
+                        category='order',
+                        message=f'Order {request.data["id"]} created successfully',
+                        level='info'
+                    )
+                    new_order.send(sender=self.__class__, user_id=request.user.id)
+                    return JsonResponse({'Status': True})
 
-               Returns:
-               - JsonResponse: The response indicating the status of the operation and any errors.
-               """
-        if not request.user.is_authenticated:
-            return JsonResponse({'Status': False, 'Error': 'Log in required'}, status=403)
+    return JsonResponse({'Status': False, 'Errors': 'Не указаны все необходимые аргументы'})
 
-        if {'id', 'contact'}.issubset(request.data):
-            if request.data['id'].isdigit():
-                try:
-                    is_updated = Order.objects.filter(
-                        user_id=request.user.id, id=request.data['id']).update(
-                        contact_id=request.data['contact'],
-                        state='new')
-                except IntegrityError as error:
-                    print(error)
-                    return JsonResponse({'Status': False, 'Errors': 'Неправильно указаны аргументы'})
-                else:
-                    if is_updated:
-                        new_order.send(sender=self.__class__, user_id=request.user.id)
-                        return JsonResponse({'Status': True})
-
-        return JsonResponse({'Status': False, 'Errors': 'Не указаны все необходимые аргументы'})
+class HawkDebugView(APIView):
+    """Тестовый эндпоинт для проверки работы Hawk"""
+    
+    authentication_classes = []
+    permission_classes = []
+    
+    def get(self, request):
+        # Просто вызываем исключение
+        1 / 0
+        return Response({"message": "This will never be reached"})
+class SimpleHawkTestView(APIView):
+    """Простой тест отправки в Hawk"""
+    
+    authentication_classes = []
+    permission_classes = []
+    
+    def get(self, request):
+        results = []
+        
+        # Проверяем наличие hawk
+        if not hasattr(settings, 'hawk') or not settings.hawk:
+            return Response({
+                'status': 'error',
+                'message': 'Hawk not initialized',
+                'hawk_object': str(getattr(settings, 'hawk', None))
+            })
+        
+        # Пробуем отправить тестовое сообщение
+        try:
+            # Простое сообщение без ошибки
+            result = settings.hawk.send(
+                "Test message from SimpleHawkTestView",
+                {
+                    'url': request.path,
+                    'method': request.method,
+                    'test': True
+                }
+            )
+            results.append({'type': 'message', 'result': str(result)})
+        except Exception as e:
+            results.append({'type': 'message', 'error': str(e)})
+        
+        # Пробуем отправить ошибку
+        try:
+            try:
+                1 / 0
+            except Exception as e:
+                result = settings.hawk.send(
+                    e,
+                    {
+                        'url': request.path,
+                        'method': request.method,
+                        'test': True
+                    }
+                )
+                results.append({'type': 'exception', 'result': str(result)})
+        except Exception as e:
+            results.append({'type': 'exception', 'error': str(e)})
+        
+        return Response({
+            'status': 'completed',
+            'hawk_configured': True,
+            'hawk_object': str(settings.hawk),
+            'results': results
+        })
