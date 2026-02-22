@@ -8,6 +8,10 @@ from django.test import TestCase
 from django.contrib.auth import get_user_model
 from rest_framework.test import APIClient
 from backend.models import Shop, Category, Product
+from rest_framework.authtoken.models import Token
+from django.core.cache import cache
+from rest_framework import status
+from unittest.mock import patch
 
 User = get_user_model()
 
@@ -230,3 +234,231 @@ class AuthenticationTests(TestCase):
         self.assertEqual(data['email'], 'auth@test.com')
         self.assertEqual(data['first_name'], 'Auth')
         self.assertEqual(data['last_name'], 'Test')
+class ThrottlingTests(TestCase):
+    """Тесты для тротлинга"""
+    
+    def setUp(self):
+        # Отключаем сигналы
+        from django.db.models.signals import post_save
+        from backend import signals
+        post_save.disconnect(signals.new_user_registered_signal, sender=User)
+        
+        # Очищаем кэш перед каждым тестом
+        cache.clear()
+        
+        self.client = APIClient()
+        
+        # Создаем тестового пользователя
+        self.user = User.objects.create_user(
+            email='throttle@test.com',
+            password='throttle123',
+            first_name='Throttle',
+            last_name='Test',
+            is_active=True
+        )
+        
+        # Создаем магазин для тестов импорта
+        self.shop = Shop.objects.create(
+            name='Throttle Shop',
+            user=self.user,
+            state=True
+        )
+    
+    def tearDown(self):
+        # Включаем сигналы
+        from django.db.models.signals import post_save
+        from backend import signals
+        post_save.connect(signals.new_user_registered_signal, sender=User)
+        cache.clear()
+    
+    def test_register_throttling(self):
+        """Тест ограничения на регистрацию"""
+        from django.conf import settings
+        old_rates = settings.REST_FRAMEWORK['DEFAULT_THROTTLE_RATES'].copy()
+        settings.REST_FRAMEWORK['DEFAULT_THROTTLE_RATES']['register'] = '1/minute'
+        
+        # Очищаем кэш перед тестом
+        cache.clear()
+        
+        # Создаем клиент с фиксированным IP
+        client = APIClient(REMOTE_ADDR='127.0.0.1')
+        
+        data = {
+            'first_name': 'Test',
+            'last_name': 'User',
+            'email': 'test@test.com',
+            'password': 'TestPass123!',
+            'company': 'Test Company',
+            'position': 'Tester'
+        }
+        
+        # Первый запрос должен быть успешным
+        response = client.post('/api/v1/user/register', data, format='json')
+        print(f"Register response 1: {response.status_code} - {response.content}")
+        self.assertEqual(response.status_code, 200)
+        
+        # Второй запрос должен получить 429
+        data['email'] = 'test2@test.com'  # Меняем email
+        response = client.post('/api/v1/user/register', data, format='json')
+        print(f"Register response 2: {response.status_code} - {response.content}")
+        self.assertEqual(response.status_code, 429)
+        
+        settings.REST_FRAMEWORK['DEFAULT_THROTTLE_RATES'] = old_rates
+
+    def test_login_throttling(self):
+        """Тест ограничения на вход"""
+        from django.conf import settings
+        old_rates = settings.REST_FRAMEWORK['DEFAULT_THROTTLE_RATES'].copy()
+        settings.REST_FRAMEWORK['DEFAULT_THROTTLE_RATES']['login'] = '1/minute'
+        
+        # Очищаем кэш перед тестом
+        cache.clear()
+        
+        data = {
+            'email': 'throttle@test.com',
+            'password': 'wrong_password'
+        }
+        
+        # Первая попытка
+        response = self.client.post('/api/v1/user/login', data, format='json')
+        print(f"Login response 1: {response.status_code} - {response.content}")  # Отладка
+        self.assertEqual(response.status_code, 200)
+        self.assertFalse(response.json()['Status'])
+        
+        # Вторая попытка - должна быть отклонена
+        response = self.client.post('/api/v1/user/login', data, format='json')
+        print(f"Login response 2: {response.status_code} - {response.content}")  # Отладка
+        self.assertEqual(response.status_code, 429)
+        
+        settings.REST_FRAMEWORK['DEFAULT_THROTTLE_RATES'] = old_rates
+
+    def test_login_throttling(self):
+        """Тест ограничения на вход"""
+        from django.conf import settings
+        old_rates = settings.REST_FRAMEWORK['DEFAULT_THROTTLE_RATES'].copy()
+        settings.REST_FRAMEWORK['DEFAULT_THROTTLE_RATES']['login'] = '1/minute'
+        
+        data = {
+            'email': 'throttle@test.com',
+            'password': 'wrong_password'
+        }
+        
+        # Первая попытка - должна вернуть 200 с Status=False
+        response = self.client.post('/api/v1/user/login', data, format='json')
+        self.assertEqual(response.status_code, 200)
+        self.assertFalse(response.json()['Status'])
+        
+        # Вторая попытка - должна быть отклонена тротлингом
+        response = self.client.post('/api/v1/user/login', data, format='json')
+        self.assertEqual(response.status_code, 429)
+        
+        settings.REST_FRAMEWORK['DEFAULT_THROTTLE_RATES'] = old_rates
+    
+def test_import_throttling(self):
+    """Тест ограничения на импорт для магазинов"""
+    from django.conf import settings
+    old_rates = settings.REST_FRAMEWORK['DEFAULT_THROTTLE_RATES'].copy()
+    settings.REST_FRAMEWORK['DEFAULT_THROTTLE_RATES']['import'] = '1/day'
+    
+    # Важно: Убедимся, что пользователь имеет тип 'shop'
+    self.user.type = 'shop'
+    self.user.save()
+    
+    # Авторизуемся как владелец магазина
+    token, _ = Token.objects.get_or_create(user=self.user)
+    self.client.credentials(HTTP_AUTHORIZATION=f'Token {token.key}')
+    
+    test_url = 'https://example.com/test.yaml'
+    
+    # Патчим get запрос
+    with patch('requests.get') as mock_get:
+        mock_get.return_value.content = b"""
+shop: Test Shop
+categories:
+  - id: 1
+    name: Test Category
+goods:
+  - id: 1
+    category: 1
+    model: test/model
+    name: Test Product
+    price: 100
+    price_rrc: 120
+    quantity: 10
+    parameters:
+      "test": "value"
+"""
+        
+        data = {'url': test_url}
+        
+        # Первый импорт должен быть успешным
+        response = self.client.post('/api/v1/partner/update', data, format='json')
+        print(f"Import response 1: {response.status_code} - {response.content}")  # Отладка
+        self.assertEqual(response.status_code, 200)
+        
+        # Второй импорт должен получить 429
+        response = self.client.post('/api/v1/partner/update', data, format='json')
+        print(f"Import response 2: {response.status_code} - {response.content}")  # Отладка
+        self.assertEqual(response.status_code, 429)
+    
+    settings.REST_FRAMEWORK['DEFAULT_THROTTLE_RATES'] = old_rates   
+    def test_user_rate_throttle(self):
+        """Тест общего ограничения для авторизованных пользователей"""
+        from django.conf import settings
+        old_rates = settings.REST_FRAMEWORK['DEFAULT_THROTTLE_RATES'].copy()
+        
+        # Временно меняем настройки
+        settings.REST_FRAMEWORK['DEFAULT_THROTTLE_RATES']['user'] = '1/minute'
+        
+        # Авторизуемся
+        token, _ = Token.objects.get_or_create(user=self.user)
+        self.client.credentials(HTTP_AUTHORIZATION=f'Token {token.key}')
+        
+        # Первый запрос должен быть успешным
+        response = self.client.get('/api/v1/categories')
+        self.assertEqual(response.status_code, 200)
+        
+        # Второй запрос должен быть отклонен
+        response = self.client.get('/api/v1/categories')
+        self.assertEqual(response.status_code, 429)
+        
+        # Восстанавливаем настройки
+        settings.REST_FRAMEWORK['DEFAULT_THROTTLE_RATES'] = old_rates
+    
+    def test_anon_rate_throttle(self):
+        """Тест общего ограничения для анонимных пользователей"""
+        from django.conf import settings
+        old_rates = settings.REST_FRAMEWORK['DEFAULT_THROTTLE_RATES'].copy()
+        
+        settings.REST_FRAMEWORK['DEFAULT_THROTTLE_RATES']['anon'] = '1/minute'
+        
+        # Без авторизации
+        # Первый запрос должен быть успешным
+        response = self.client.get('/api/v1/categories')
+        self.assertEqual(response.status_code, 200)
+        
+        # Второй запрос должен быть отклонен
+        response = self.client.get('/api/v1/categories')
+        self.assertEqual(response.status_code, 429)
+        
+        settings.REST_FRAMEWORK['DEFAULT_THROTTLE_RATES'] = old_rates
+    
+    def test_throttle_headers(self):
+        """Проверяем, что возвращаются правильные headers при тротлинге"""
+        from django.conf import settings
+        old_rates = settings.REST_FRAMEWORK['DEFAULT_THROTTLE_RATES'].copy()
+        
+        settings.REST_FRAMEWORK['DEFAULT_THROTTLE_RATES']['anon'] = '1/minute'
+        
+        # Первый запрос
+        response = self.client.get('/api/v1/categories')
+        self.assertEqual(response.status_code, 200)
+        
+        # Второй запрос - должен быть отклонен
+        response = self.client.get('/api/v1/categories')
+        self.assertEqual(response.status_code, 429)
+        
+        # Проверяем headers
+        self.assertIn('Retry-After', response)
+        
+        settings.REST_FRAMEWORK['DEFAULT_THROTTLE_RATES'] = old_rates

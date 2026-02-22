@@ -150,6 +150,19 @@ REST_FRAMEWORK = {
 
         'rest_framework.authentication.TokenAuthentication',
     ),
+# Добавляем тротлинг
+    # 'DEFAULT_THROTTLE_CLASSES': [
+    #     'rest_framework.throttling.AnonRateThrottle',
+    #     'rest_framework.throttling.UserRateThrottle',
+    # ],
+    'DEFAULT_THROTTLE_RATES': {
+        'anon': '100/day',     # 100 запросов в день для анонимных
+        'user': '1000/day',    # 1000 запросов в день для авторизованных
+        'register': '5/hour',  # 5 попыток регистрации в час
+        'login': '10/minute',  # 10 попыток входа в минуту
+        'import': '10/day',    # 10 импортов в день для магазинов
+    },
+
     'DEFAULT_SCHEMA_CLASS': 'drf_spectacular.openapi.AutoSchema',
 
 }

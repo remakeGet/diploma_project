@@ -14,7 +14,8 @@ from rest_framework.response import Response
 from rest_framework.views import APIView
 from ujson import loads as load_json
 from yaml import load as load_yaml, Loader
-
+from rest_framework.throttling import AnonRateThrottle, UserRateThrottle
+from backend.throttles import RegisterThrottle, LoginThrottle, ImportThrottle
 from backend.models import Shop, Category, Product, ProductInfo, Parameter, ProductParameter, Order, OrderItem, \
     Contact, ConfirmEmailToken
 from backend.serializers import UserSerializer, CategorySerializer, ShopSerializer, ProductInfoSerializer, \
@@ -41,7 +42,7 @@ class RegisterAccount(APIView):
     - Status: True при успешной регистрации
     - Errors: Описание ошибок при неудаче
     """    
-
+    throttle_classes = [RegisterThrottle]
     # Регистрация методом POST
 
     def post(self, request, *args, **kwargs):
@@ -54,6 +55,12 @@ class RegisterAccount(APIView):
             Returns:
                 JsonResponse: The response indicating the status of the operation and any errors.
             """
+        print(f"RegisterAccount called with throttle_classes: {self.throttle_classes}")
+        print(f"Request IP: {request.META.get('REMOTE_ADDR')}")
+        # Проверяем троттлинг вручную для отладки
+        for throttle in self.get_throttles():
+            if not throttle.allow_request(request, self):
+                print(f"Throttle {throttle} blocked the request")
         # проверяем обязательные аргументы
         if {'first_name', 'last_name', 'email', 'password', 'company', 'position'}.issubset(request.data):
 
@@ -186,7 +193,7 @@ class LoginAccount(APIView):
     """
     Класс для авторизации пользователей
     """
-
+    throttle_classes = [LoginThrottle]
     # Авторизация методом POST
     def post(self, request, *args, **kwargs):
         """
@@ -198,6 +205,7 @@ class LoginAccount(APIView):
                 Returns:
                     JsonResponse: The response indicating the status of the operation and any errors.
                 """
+        print(f"LoginAccount called with throttle_classes: {self.throttle_classes}")
         if {'email', 'password'}.issubset(request.data):
             user = authenticate(request, username=request.data['email'], password=request.data['password'])
 
@@ -446,7 +454,7 @@ class PartnerUpdate(APIView):
     Attributes:
     - None
     """
-
+    throttle_classes = [ImportThrottle]
     def post(self, request, *args, **kwargs):
         """
                 Update the partner price list information.
