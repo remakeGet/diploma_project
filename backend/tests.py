@@ -462,3 +462,34 @@ goods:
         self.assertIn('Retry-After', response)
         
         settings.REST_FRAMEWORK['DEFAULT_THROTTLE_RATES'] = old_rates
+
+class SocialAuthTests(TestCase):
+    """Тесты для социальной аутентификации"""
+    
+    def setUp(self):
+        self.client = APIClient()
+    
+    def test_google_login_url(self):
+        """Тест доступности URL для Google авторизации"""
+        response = self.client.get('/social/login/google-oauth2/')
+        # Должен перенаправлять на Google
+        self.assertEqual(response.status_code, 302)
+        self.assertIn('accounts.google.com', response.url)
+    
+    def test_github_login_url(self):
+        """Тест доступности URL для GitHub авторизации"""
+        response = self.client.get('/social/login/github/')
+        # Должен перенаправлять на GitHub
+        self.assertEqual(response.status_code, 302)
+        self.assertIn('github.com', response.url)
+    
+    def test_social_login_success_endpoint(self):
+        """Тест эндпоинта успешного входа"""
+        response = self.client.get('/api/v1/social/login/success/')
+        # Без аутентификации должен вернуть 401
+        self.assertEqual(response.status_code, 401)
+    
+    def test_social_login_error_endpoint(self):
+        """Тест эндпоинта ошибки входа"""
+        response = self.client.get('/api/v1/social/login/error/')
+        self.assertEqual(response.status_code, 400)

@@ -35,11 +35,14 @@ INSTALLED_APPS = [
     'django.contrib.sessions',
     'django.contrib.messages',
     'django.contrib.staticfiles',
+    'django.contrib.sites',  # Добавить для social-auth
     'rest_framework',
     'rest_framework.authtoken',
     'django_rest_passwordreset',
     'drf_spectacular',  
     'drf_spectacular_sidecar',
+    # Social Auth
+    'social_django',  
     'backend',
 ]
 
@@ -49,9 +52,51 @@ MIDDLEWARE = [
     'django.middleware.common.CommonMiddleware',
     'django.middleware.csrf.CsrfViewMiddleware',
     'django.contrib.auth.middleware.AuthenticationMiddleware',
+    # Social Auth middleware 
+    'social_django.middleware.SocialAuthExceptionMiddleware',
     'django.contrib.messages.middleware.MessageMiddleware',
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
 ]
+
+# Site ID для django.contrib.sites
+SITE_ID = 1
+# Аутентификация
+AUTHENTICATION_BACKENDS = [
+    'social_core.backends.google.GoogleOAuth2',
+    'social_core.backends.github.GithubOAuth2',
+    'django.contrib.auth.backends.ModelBackend',
+]
+
+# Настройки Social Auth
+SOCIAL_AUTH_URL_NAMESPACE = 'social'
+
+# Ключи приложений (получить в консоли разработчика)
+SOCIAL_AUTH_GOOGLE_OAUTH2_KEY = os.environ.get('GOOGLE_OAUTH2_KEY', '')
+SOCIAL_AUTH_GOOGLE_OAUTH2_SECRET = os.environ.get('GOOGLE_OAUTH2_SECRET', '')
+
+SOCIAL_AUTH_GITHUB_KEY = os.environ.get('GITHUB_KEY', '')
+SOCIAL_AUTH_GITHUB_SECRET = os.environ.get('GITHUB_SECRET', '')
+
+# Дополнительные настройки
+SOCIAL_AUTH_LOGIN_REDIRECT_URL = '/api/v1/social/login/success/'
+SOCIAL_AUTH_LOGIN_ERROR_URL = '/api/v1/social/login/error/'
+SOCIAL_AUTH_NEW_USER_REDIRECT_URL = '/api/v1/social/login/success/'
+SOCIAL_AUTH_NEW_ASSOCIATION_REDIRECT_URL = '/api/v1/social/login/success/'
+
+# Разрешаем создавать пользователей через соцсети
+SOCIAL_AUTH_CREATE_USERS = True
+
+# Поля для заполнения при создании пользователя
+SOCIAL_AUTH_USER_FIELDS = ['email', 'first_name', 'last_name', 'username']
+
+# Настройки для Google
+SOCIAL_AUTH_GOOGLE_OAUTH2_SCOPE = [
+    'https://www.googleapis.com/auth/userinfo.email',
+    'https://www.googleapis.com/auth/userinfo.profile',
+]
+
+# Настройки для GitHub
+SOCIAL_AUTH_GITHUB_SCOPE = ['user:email']
 
 ROOT_URLCONF = 'netology_pd_diplom.urls'
 
@@ -149,6 +194,8 @@ REST_FRAMEWORK = {
     'DEFAULT_AUTHENTICATION_CLASSES': (
 
         'rest_framework.authentication.TokenAuthentication',
+        'rest_framework.authentication.TokenAuthentication',
+        'rest_framework.authentication.SessionAuthentication',
     ),
 # Добавляем тротлинг
     # 'DEFAULT_THROTTLE_CLASSES': [

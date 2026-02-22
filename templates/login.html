@@ -1,0 +1,11 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Вход через соцсети</title>
+</head>
+<body>
+    <h2>Вход в систему</h2>
+    <a href="{% url 'social:begin' 'google-oauth2' %}">Войти через Google</a><br>
+    <a href="{% url 'social:begin' 'github' %}">Войти через GitHub</a>
+</body>
+</html>

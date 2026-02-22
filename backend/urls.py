@@ -3,7 +3,7 @@ from django_rest_passwordreset.views import reset_password_request_token, reset_
 
 from backend.views import PartnerUpdate, RegisterAccount, LoginAccount, CategoryView, ShopView, ProductInfoView, \
     BasketView, \
-    AccountDetails, ContactView, OrderView, PartnerState, PartnerOrders, ConfirmAccount
+    AccountDetails, ContactView, OrderView, PartnerState, PartnerOrders, ConfirmAccount, SocialLoginSuccess, SocialLoginError, SocialLoginPage  
 
 app_name = 'backend'
 urlpatterns = [
@@ -17,6 +17,10 @@ urlpatterns = [
     path('user/login', LoginAccount.as_view(), name='user-login'),
     path('user/password_reset', reset_password_request_token, name='password-reset'),
     path('user/password_reset/confirm', reset_password_confirm, name='password-reset-confirm'),
+    # Social Auth обработчики
+    path('social/login/success/', SocialLoginSuccess.as_view(), name='social-login-success'),
+    path('social/login/error/', SocialLoginError.as_view(), name='social-login-error'),
+    path('social/login/page/', SocialLoginPage.as_view(), name='social-login-page'),
     path('categories', CategoryView.as_view(), name='categories'),
     path('shops', ShopView.as_view(), name='shops'),
     path('products', ProductInfoView.as_view(), name='shops'),

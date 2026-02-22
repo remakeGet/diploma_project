@@ -8,6 +8,7 @@ from django.db import IntegrityError
 from django.db.models import Q, Sum, F
 from django.http import JsonResponse
 from requests import get
+from django.shortcuts import render  # 
 from rest_framework.authtoken.models import Token
 from rest_framework.generics import ListAPIView
 from rest_framework.response import Response
@@ -22,6 +23,43 @@ from backend.serializers import UserSerializer, CategorySerializer, ShopSerializ
     OrderItemSerializer, OrderSerializer, ContactSerializer
 from backend.signals import new_user_registered, new_order
 
+
+class SocialLoginPage(APIView):
+    """Страница с кнопками входа через соцсети"""
+    
+    def get(self, request):
+        return render(request, 'social_login.html')
+    
+class SocialLoginSuccess(APIView):
+    """
+    Обработка успешного входа через соцсети.
+    Возвращает токен для API.
+    """
+    def get(self, request):
+        user = request.user
+        if user.is_authenticated:
+            token, _ = Token.objects.get_or_create(user=user)
+            return Response({
+                'Status': True,
+                'Token': token.key,
+                'email': user.email,
+                'first_name': user.first_name,
+                'last_name': user.last_name
+            })
+        return Response({
+            'Status': False,
+            'Error': 'Not authenticated'
+        }, status=401)
+
+class SocialLoginError(APIView):
+    """
+    Обработка ошибки при входе через соцсети.
+    """
+    def get(self, request):
+        return Response({
+            'Status': False,
+            'Error': 'Social authentication failed'
+        }, status=400)
 
 class RegisterAccount(APIView):
     """

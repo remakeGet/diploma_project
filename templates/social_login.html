@@ -1,0 +1,31 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Вход через соцсети</title>
+    <style>
+        .social-btn {
+            display: inline-block;
+            padding: 10px 20px;
+            margin: 10px;
+            text-decoration: none;
+            color: white;
+            border-radius: 5px;
+        }
+        .google-btn {
+            background-color: #DB4437;
+        }
+        .github-btn {
+            background-color: #333;
+        }
+    </style>
+</head>
+<body>
+    <h2>Вход в систему</h2>
+    <a href="{% url 'social:begin' 'google-oauth2' %}" class="social-btn google-btn">
+        Войти через Google
+    </a>
+    <a href="{% url 'social:begin' 'github' %}" class="social-btn github-btn">
+        Войти через GitHub
+    </a>
+</body>
+</html>

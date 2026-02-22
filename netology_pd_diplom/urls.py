@@ -20,6 +20,9 @@ from drf_spectacular.views import SpectacularAPIView, SpectacularSwaggerView, Sp
 urlpatterns = [
     path('admin/', admin.site.urls),
     path('api/v1/', include('backend.urls', namespace='backend')),
+    # Social Auth URLs
+    path('social/', include('social_django.urls', namespace='social')),
+    
 
  # OpenAPI документация
     path('api/schema/', SpectacularAPIView.as_view(), name='schema'),
