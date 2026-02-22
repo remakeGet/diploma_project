@@ -40,6 +40,8 @@ INSTALLED_APPS = [
     'rest_framework',
     'rest_framework.authtoken',
     'django_rest_passwordreset',
+    # 'versatileimagefield',
+    'imagekit',
     'drf_spectacular',  
     'drf_spectacular_sidecar',
     # Social Auth
@@ -104,6 +106,9 @@ BATON = {
         },
     )
 }
+
+MEDIA_URL = '/media/'
+MEDIA_ROOT = os.path.join(BASE_DIR, 'media')
 
 MIDDLEWARE = [
     'django.middleware.security.SecurityMiddleware',
@@ -226,6 +231,7 @@ USE_TZ = True
 # https://docs.djangoproject.com/en/2.2/howto/static-files/
 
 STATIC_URL = '/static/'
+STATIC_ROOT = os.path.join(BASE_DIR, 'static')
 
 AUTH_USER_MODEL = 'backend.User'
 
@@ -307,6 +313,9 @@ CELERY_BEAT_SCHEDULER = 'django_celery_beat.schedulers:DatabaseScheduler'
 # Очереди для разных типов задач
 CELERY_TASK_ROUTES = {
     'backend.tasks.send_email_task': {'queue': 'email'},
-    'backend.tasks.do_import_task': {'queue': 'import'},
-    'backend.tasks.send_order_confirmation_email': {'queue': 'email'},
+    'backend.tasks.import_products_task': {'queue': 'import'},
+    'backend.tasks.process_user_avatar': {'queue': 'images'},
+    'backend.tasks.process_product_image': {'queue': 'images'},
 }
+CELERY_TASK_ALWAYS_EAGER = True
+CELERY_TASK_EAGER_PROPAGATES = True

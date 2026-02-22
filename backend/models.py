@@ -5,6 +5,10 @@ from django.db import models
 from django.utils.translation import gettext_lazy as _
 from django_rest_passwordreset.tokens import get_token_generator
 
+
+from imagekit.models import ImageSpecField, ProcessedImageField
+from imagekit.processors import ResizeToFill, ResizeToFit
+
 STATE_CHOICES = (
     ('basket', 'Статус корзины'),
     ('new', 'Новый'),
@@ -90,7 +94,20 @@ class User(AbstractUser):
         ),
     )
     type = models.CharField(verbose_name='Тип пользователя', choices=USER_TYPE_CHOICES, max_length=5, default='buyer')
-
+    avatar = ProcessedImageField(
+        upload_to='avatars/',
+        processors=[ResizeToFill(300, 300)],
+        format='JPEG',
+        options={'quality': 90},
+        blank=True,
+        null=True
+    )
+    avatar_thumbnail = ImageSpecField(
+        source='avatar',
+        processors=[ResizeToFill(100, 100)],
+        format='JPEG',
+        options={'quality': 90}
+    )
     def __str__(self):
         return f'{self.first_name} {self.last_name}'
 
@@ -168,6 +185,15 @@ class ProductInfo(models.Model):
             models.UniqueConstraint(fields=['product', 'shop', 'external_id'], name='unique_product_info'),
         ]
 
+class ProductImage(models.Model):
+    product = models.ForeignKey(Product, on_delete=models.CASCADE, related_name='images')
+    image = ProcessedImageField(
+        upload_to='products/',
+        processors=[ResizeToFit(1200, 1200)],
+        format='JPEG',
+        options={'quality': 90}
+    )
+    is_main = models.BooleanField(default=False)
 
 class Parameter(models.Model):
     objects = models.manager.Manager()

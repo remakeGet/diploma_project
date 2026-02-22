@@ -5,6 +5,9 @@ from backend.views import PartnerUpdate, RegisterAccount, LoginAccount, Category
     BasketView, \
     AccountDetails, ContactView, OrderView, PartnerState, PartnerOrders, ConfirmAccount, SocialLoginSuccess, SocialLoginError, SocialLoginPage  
 
+from django.conf import settings  # Добавьте эту строку
+from django.conf.urls.static import static  # Добавьте эту строку
+
 app_name = 'backend'
 urlpatterns = [
     path('partner/update', PartnerUpdate.as_view(), name='partner-update'),
