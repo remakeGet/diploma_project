@@ -365,30 +365,39 @@ class BasketView(APIView):
     # добавить позиции в корзину
     def put(self, request, *args, **kwargs):
         """
-        Update the contact information of the authenticated user.
+        Update the quantity of items in the user's basket.
+        
+        Args:
+        - request (Request): The Django request object.
+        
+        Returns:
+        - JsonResponse: The response indicating the status of the operation and any errors.
         """
         if not request.user.is_authenticated:
             return JsonResponse({'Status': False, 'Error': 'Log in required'}, status=403)
 
-        if 'id' in request.data:
-            if request.data['id'].isdigit():
-                contact = Contact.objects.filter(
-                    id=request.data['id'], 
-                    user_id=request.user.id
-                ).first()
-                if contact:
-                    serializer = ContactSerializer(
-                        contact, 
-                        data=request.data, 
-                        partial=True
-                    )
-                    if serializer.is_valid():
-                        serializer.save()
-                        return JsonResponse({'Status': True})
-                    else:
-                        return JsonResponse({'Status': False, 'Errors': serializer.errors})
-
-        return JsonResponse({'Status': False, 'Errors': 'Не указаны все необходимые аргументы'})
+        items_sting = request.data.get('items')
+        if items_sting:
+            try:
+                items_dict = load_json(items_sting)
+            except ValueError:
+                return JsonResponse({'Status': False, 'Errors': 'Неверный формат запроса'})
+            else:
+                basket, _ = Order.objects.get_or_create(user_id=request.user.id, state='basket')
+                objects_updated = 0
+                for order_item in items_dict:
+                    if 'id' in order_item and 'quantity' in order_item:
+                        # Проверяем, что позиция принадлежит корзине текущего пользователя
+                        updated = OrderItem.objects.filter(
+                            order_id=basket.id, 
+                            id=order_item['id']
+                        ).update(quantity=order_item['quantity'])
+                        if updated:
+                            objects_updated += 1
+                
+                return JsonResponse({'Status': True, 'Обновлено объектов': objects_updated})
+        
+        return JsonResponse({'Status': False, 'Errors': 'Не указаны все необходимые аргументы'})    
 
 class PartnerUpdate(APIView):
     """
